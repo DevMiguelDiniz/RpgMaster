@@ -1,0 +1,25 @@
+@startuml Diagrama de Estados - Ciclo de Vida da Sessão
+
+skinparam state {
+  BackgroundColor #E1F5FE
+  BorderColor #0277BD
+  ArrowColor #0277BD
+  BackgroundColor<<initial>> #4CAF50
+  BackgroundColor<<final>> #F44336
+  BackgroundColor<<choice>> #FFC107
+}
+
+title Diagrama de Estados - Ciclo de Vida da Sessão
+
+state "Registrada" as SessionRegistered
+state "Editada" as SessionEdited
+
+[*] --> SessionRegistered : GM registra sessão
+
+SessionRegistered --> SessionEdited : GM edita sessão
+SessionEdited --> SessionRegistered : GM salva alterações
+SessionRegistered --> [*] : Sessão finalizada
+SessionEdited --> [*] : Sessão finalizada
+
+@enduml
+

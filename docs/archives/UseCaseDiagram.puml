@@ -1,0 +1,82 @@
+@startuml Diagrama de Casos de Uso - Sistema de Gerenciamento de Campanhas de RPG
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Mestre (GM)" as GM
+actor "Jogador (Player)" as Player
+
+rectangle "Sistema de Gerenciamento de Campanhas de RPG" {
+  
+  ' Casos de Uso do GM
+  usecase "UC-01\nGerenciar Campanha" as UC01
+  usecase "UC-02\nGerenciar Personagem" as UC02
+  usecase "UC-03\nEditar Ficha de\nPersonagem" as UC03
+  usecase "UC-04\nGerenciar Sistema\nde Regras" as UC04
+  usecase "UC-05\nRegistrar Sessão" as UC05
+  usecase "UC-06\nVisualizar Campanha" as UC06
+  
+  ' Casos de uso específicos decompostos
+  usecase "Criar Campanha" as UC01_1
+  usecase "Editar Campanha" as UC01_2
+  usecase "Deletar Campanha" as UC01_3
+  usecase "Convidar Jogadores" as UC01_4
+  
+  usecase "Criar NPC" as UC02_1
+  usecase "Editar NPC" as UC02_2
+  usecase "Deletar NPC" as UC02_3
+  usecase "Criar PC" as UC02_4
+  usecase "Editar PC" as UC02_5
+  usecase "Deletar PC" as UC02_6
+  
+  usecase "Cadastrar Sistema\nde Regras" as UC04_1
+  usecase "Editar Sistema\nde Regras" as UC04_2
+  usecase "Deletar Sistema\nde Regras" as UC04_3
+}
+
+' Relacionamentos do GM
+GM --> UC01
+GM --> UC02
+GM --> UC03
+GM --> UC04
+GM --> UC05
+GM --> UC06
+
+' Relacionamentos do Player
+Player --> UC02
+Player --> UC03
+Player --> UC06
+
+' Relacionamentos <<include>> e <<extend>>
+UC01 ..> UC01_1 : <<include>>
+UC01 ..> UC01_2 : <<include>>
+UC01 ..> UC01_3 : <<include>>
+UC01 ..> UC01_4 : <<include>>
+
+UC02 ..> UC02_1 : <<include>>
+UC02 ..> UC02_2 : <<include>>
+UC02 ..> UC02_3 : <<include>>
+
+UC04 ..> UC04_1 : <<include>>
+UC04 ..> UC04_2 : <<include>>
+UC04 ..> UC04_3 : <<include>>
+
+' Nota explicativa
+note right of GM
+  O Mestre tem permissões
+  completas no sistema:
+  - Gerencia campanhas
+  - Cria e edita NPCs
+  - Acessa fichas de PCs
+  - Registra sessões
+end note
+
+note right of Player
+  O Jogador tem permissões
+  limitadas:
+  - Cria e edita seus PCs
+  - Visualiza campanhas ativas
+  - Acessa histórico de sessões
+end note
+
+@enduml

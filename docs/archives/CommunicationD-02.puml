@@ -1,0 +1,58 @@
+@startuml UC02 - Criar Personagem - Diagrama de Comunicação
+
+title Diagrama de Comunicação - UC-02: Criar Personagem
+
+' Definição dos Participantes
+actor "Jogador (Player)" as Player
+participant "Interface Web" as UI
+participant "CharacterController" as Controller
+participant "CharacterService" as Service
+participant "CampaignRepository" as RepoCamp
+participant "RuleSetRepository" as RepoRules
+participant "CharacterRepository" as RepoChar
+database "Banco de Dados" as DB
+
+' Configuração para numerar as mensagens automaticamente
+autonumber 1
+
+== Fluxo: Listar Campanhas Disponíveis ==
+
+Player -> UI: acessarCriacao()
+UI -> Controller: solicitarCampanhasDisponiveis(player_id)
+Controller -> RepoCamp: buscarCampanhasDoJogador(player_id)
+RepoCamp -> DB: SELECT * FROM Campaign WHERE campaign_id IN (SELECT campaign_id FROM CampaignCharacter)
+DB --> RepoCamp: lista de campanhas
+RepoCamp --> Controller: campanhas disponíveis
+Controller --> UI: lista de campanhas
+UI --> Player: exibirCampanhas(listaCampanhas)
+
+== Fluxo: Obter Template de Ficha ==
+
+Player -> UI: obterTemplate(campaign_id)
+UI -> Controller: obterTemplateFicha(campaign_id)
+Controller -> RepoCamp: buscarCampanha(campaign_id)
+RepoCamp -> DB: SELECT * FROM Campaign WHERE id = ?
+DB --> RepoCamp: campanha com ruleset_id
+RepoCamp --> Controller: dados da campanha
+Controller -> RepoRules: buscarTemplate(ruleset_id)
+RepoRules -> DB: SELECT ficha_template FROM RuleSet WHERE id = ?
+DB --> RepoRules: template JSON
+RepoRules --> Controller: template da ficha
+Controller --> UI: formulário dinâmico
+UI --> Player: exibirFormulario(template)
+
+== Fluxo: Criar Personagem ==
+
+Player -> UI: criarPersonagem(dados_pc, ficha_data)
+UI -> Controller: criarPersonagem(dados_pc, ficha_data)
+Controller -> Service: validarECriarPC(dados, player_id)
+Service -> Service: validarPermissões()
+Service -> RepoChar: salvarPersonagem(personagem)
+RepoChar -> DB: INSERT INTO Character
+DB --> RepoChar: character_id
+RepoChar --> Service: personagem criado
+Service --> Controller: sucesso
+Controller --> UI: confirmação
+UI --> Player: personagemCriado(character_id)
+
+@enduml

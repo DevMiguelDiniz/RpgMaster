@@ -1,0 +1,173 @@
+@startuml Diagrama de Componentes - Sistema de Gerenciamento de Campanhas de RPG
+
+skinparam componentStyle rectangle
+skinparam handwritten false
+skinparam linetype ortho
+skinparam defaultFontSize 11
+skinparam packageStyle rectangle
+
+skinparam ArrowThickness 2
+skinparam ArrowColor #424242
+skinparam linetype ortho
+
+title Diagrama de Componentes - Sistema de Gerenciamento de Campanhas de RPG
+
+skinparam component {
+  BackgroundColor<<frontend>> #E1F5FE
+  BorderColor<<frontend>> #0277BD
+  BackgroundColor<<backend>> #FFF3E0
+  BorderColor<<backend>> #E65100
+  BackgroundColor<<database>> #F1F8E9
+  BorderColor<<database>> #558B2F
+  BackgroundColor<<interface>> #F5F5F5
+  BorderColor<<interface>> #757575
+}
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #424242
+}
+
+package "Frontend - Next.js" <<frontend>> {
+  
+  component [Pages Router] <<frontend>> as PagesRouter
+  component [React Components] <<frontend>> as Components
+  component [State Management] <<frontend>> as StateMgmt
+  component [API Client] <<frontend>> as ApiClient
+  component [Authentication] <<frontend>> as FrontendAuth
+  
+  ' Fluxo interno do frontend
+  PagesRouter -[#0277BD,bold]-> Components : "renderiza"
+  Components -[#0277BD,bold]-> StateMgmt : "gerencia estado"
+  StateMgmt -[#0277BD,bold]-> ApiClient : "faz requisições"
+  ApiClient -[#0277BD,bold]-> FrontendAuth : "adiciona token"
+}
+
+package "Backend - Spring Boot" <<backend>> {
+  
+  component [REST API Controllers] <<backend>> as Controllers
+  component [Business Services] <<backend>> as Services
+  component [Data Repositories] <<backend>> as Repositories
+  component [Security Layer] <<backend>> as Security
+  component [DTO Mappers] <<backend>> as Mappers
+  
+  ' Fluxo interno do backend
+  Controllers -[#E65100,bold]-> Security : "valida autenticação"
+  Controllers -[#E65100,bold]-> Services : "delega lógica"
+  Controllers -[#E65100,bold]-> Mappers : "converte DTOs"
+  Services -[#E65100,bold]-> Repositories : "acessa dados"
+  Security -[#E65100,bold]-> Services : "autoriza acesso"
+}
+
+package "Database - PostgreSQL" <<database>> {
+  
+  component [Database Schema] <<database>> as Schema
+  component [JSON/JSONB Storage] <<database>> as JsonStorage
+  
+  Schema -[#558B2F,bold]-> JsonStorage : "armazena"
+}
+
+package "API Endpoints" <<interface>> {
+  
+  interface "/api/auth" as AuthEndpoint
+  interface "/api/campaigns" as CampaignsEndpoint
+  interface "/api/characters" as CharactersEndpoint
+  interface "/api/sessions" as SessionsEndpoint
+  interface "/api/rulesets" as RulesetsEndpoint
+}
+
+ApiClient -[#1976D2,bold]-> Controllers : "HTTPS\nREST API"
+FrontendAuth -[#1976D2,bold]-> Security : "JWT Token"
+
+Repositories -[#388E3C,bold]-> Schema : "JDBC\nJPA/Hibernate"
+
+Controllers -[#E65100,bold]--> AuthEndpoint : "provides"
+Controllers -[#E65100,bold]--> CampaignsEndpoint : "provides"
+Controllers -[#E65100,bold]--> CharactersEndpoint : "provides"
+Controllers -[#E65100,bold]--> SessionsEndpoint : "provides"
+Controllers -[#E65100,bold]--> RulesetsEndpoint : "provides"
+
+ApiClient -[#0277BD,bold]--> AuthEndpoint : "consumes"
+ApiClient -[#0277BD,bold]--> CampaignsEndpoint : "consumes"
+ApiClient -[#0277BD,bold]--> CharactersEndpoint : "consumes"
+ApiClient -[#0277BD,bold]--> SessionsEndpoint : "consumes"
+ApiClient -[#0277BD,bold]--> RulesetsEndpoint : "consumes"
+
+
+
+note right of PagesRouter
+  <b>Rotas:</b>
+  • /dashboard
+  • /campaigns
+  • /characters
+  • /sessions
+  • /rulesets
+end note
+
+note right of Components
+  <b>Componentes:</b>
+  • CampaignForm
+  • CharacterSheet
+  • SessionLog
+  • RuleSetSelector
+end note
+
+note right of StateMgmt
+  <b>Gerenciamento:</b>
+  • Context API
+  • React Query
+  • Local State
+end note
+
+note right of ApiClient
+  <b>Funcionalidades:</b>
+  • Axios Instance
+  • Request Interceptor
+  • Response Interceptor
+  • Error Handling
+end note
+
+note left of Security
+  <b>Componentes:</b>
+  • JwtAuthenticationFilter
+  • SecurityConfig
+  • JwtTokenUtil
+  • UserDetailsService
+end note
+
+note left of Services
+  <b>Serviços:</b>
+  • UserService
+  • CampaignService
+  • CharacterService
+  • SessionService
+  • RuleSetService
+end note
+
+note left of Repositories
+  <b>Repositórios:</b>
+  • UserRepository
+  • CampaignRepository
+  • CharacterRepository
+  • SessionRepository
+  • RuleSetRepository
+end note
+
+note bottom of Schema
+  <b>Tabelas:</b>
+  • users
+  • campaigns
+  • characters
+  • sessions
+  • rulesets
+  • campaign_character
+end note
+
+note bottom of JsonStorage
+  <b>Armazenamento:</b>
+  • ficha_data (JSONB)
+  • ficha_template (JSONB)
+end note
+
+
+@enduml

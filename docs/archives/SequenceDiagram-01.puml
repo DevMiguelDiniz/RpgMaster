@@ -1,0 +1,69 @@
+@startuml UC01 - Criar Campanha
+
+title Diagrama de Sequência - UC-01: Criar Campanha
+
+actor "Mestre (GM)" as GM
+participant "Interface\nWeb" as UI
+participant "Controller\nCampanha" as Controller
+participant "Service\nCampanha" as Service
+participant "Repository\nCampanha" as Repo
+participant "Repository\nRuleSet" as RepoRules
+database "Banco de\nDados" as DB
+
+autonumber
+
+GM -> UI: Acessa formulário de criação
+activate UI
+
+UI -> Controller: solicitarFormularioCriacao()
+activate Controller
+
+Controller -> RepoRules: listarSistemasRegras()
+activate RepoRules
+
+RepoRules -> DB: SELECT * FROM RuleSet
+activate DB
+DB --> RepoRules: lista de sistemas
+deactivate DB
+
+RepoRules --> Controller: sistemas disponíveis
+deactivate RepoRules
+
+Controller --> UI: formulário + sistemas
+deactivate Controller
+
+UI --> GM: Exibe formulário com sistemas
+deactivate UI
+
+GM -> UI: Preenche dados (nome, descrição)\ne seleciona sistema de regras
+activate UI
+
+UI -> Controller: criarCampanha(dados)
+activate Controller
+
+Controller -> Service: validarECriarCampanha(dados, gm_id)
+activate Service
+
+Service -> Service: validarDados()
+
+Service -> Repo: salvarCampanha(campanha)
+activate Repo
+
+Repo -> DB: INSERT INTO Campaign\n(name, ruleset_id, gm_user_id, status)
+activate DB
+DB --> Repo: campaign_id
+deactivate DB
+
+Repo --> Service: campanha criada
+deactivate Repo
+
+Service --> Controller: sucesso
+deactivate Service
+
+Controller --> UI: confirmação
+deactivate Controller
+
+UI --> GM: Campanha criada com sucesso
+deactivate UI
+
+@enduml

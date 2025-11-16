@@ -1,0 +1,51 @@
+@startuml UC03 - Editar Ficha - Diagrama de Comunicação
+
+title Diagrama de Comunicação - UC-03: Editar Ficha de Personagem
+
+' Definição dos Participantes
+actor "Usuário (GM/Player)" as User
+participant "Interface Web" as UI
+participant "CharacterController" as Controller
+participant "CharacterService" as Service
+participant "CharacterRepository" as RepoChar
+database "Banco de Dados" as DB
+
+' Configuração para numerar as mensagens automaticamente
+autonumber 1
+
+== Fluxo: Buscar e Validar Acesso à Ficha ==
+
+User -> UI: buscarFicha(character_id)
+UI -> Controller: buscarFichaPersonagem(character_id, user_id)
+Controller -> Service: validarPermissaoAcesso(character_id, user_id)
+Service -> RepoChar: buscarPersonagem(character_id)
+RepoChar -> DB: SELECT * FROM Character WHERE character_id = ?
+DB --> RepoChar: dados do personagem
+RepoChar --> Service: personagem
+Service -> Service: verificarPermissao() (owner ou GM)
+
+alt Permissão concedida
+    Service --> Controller: personagem autorizado
+    Controller --> UI: dados da ficha
+    UI --> User: exibirFicha(ficha_data)
+    
+    == Fluxo: Atualizar Ficha ==
+    
+    User -> UI: atualizarFicha(character_id, ficha_data)
+    UI -> Controller: atualizarFicha(character_id, ficha_data)
+    Controller -> Service: validarEAtualizarFicha(dados)
+    Service -> Service: validarDados()
+    Service -> RepoChar: atualizarPersonagem(character_id, dados)
+    RepoChar -> DB: UPDATE Character SET ficha_data = ?
+    DB --> RepoChar: confirmação
+    RepoChar --> Service: atualizado
+    Service --> Controller: sucesso
+    Controller --> UI: confirmação
+    UI --> User: fichaAtualizada(character_id)
+else Permissão negada
+    Service --> Controller: erro de permissão
+    Controller --> UI: acesso negado
+    UI --> User: mensagemErro("Sem permissão")
+end
+
+@enduml

@@ -1,0 +1,539 @@
+@startuml Diagrama de Classes - Sistema de Gerenciamento de Campanhas de RPG
+
+skinparam classAttributeIconSize 0
+skinparam handwritten false
+skinparam linetype ortho
+
+title Diagrama de Classes - Sistema de Gerenciamento de Campanhas de RPG
+
+' Definição de cores para estereótipos
+skinparam class {
+  BackgroundColor<<Entity>> #E1F5FE
+  BackgroundColor<<Repository>> #FFF3E0
+  BackgroundColor<<Service>> #F1F8E9
+  BackgroundColor<<Controller>> #FCE4EC
+  BackgroundColor<<DTO>> #E8F5E9
+  BackgroundColor<<Security>> #FFF9C4
+  BorderColor #0277BD
+}
+
+package "Entidades (Domain Models)" <<Entity>> {
+
+  class User <<Entity>> {
+    - Long userId
+    - String name
+    - String email
+    - String password
+    - String role
+    - LocalDateTime createdAt
+    - LocalDateTime updatedAt
+    --
+    + Long getUserId()
+    + String getName()
+    + String getEmail()
+    + String getRole()
+    + void setName(String name)
+    + void setEmail(String email)
+    + void setPassword(String password)
+    + boolean isGM()
+    + boolean isPlayer()
+  }
+
+  class Campaign <<Entity>> {
+    - Long campaignId
+    - String name
+    - String description
+    - String status
+    - LocalDateTime lastSession
+    - LocalDateTime createdAt
+    - LocalDateTime updatedAt
+    --
+    + Long getCampaignId()
+    + String getName()
+    + String getDescription()
+    + String getStatus()
+    + User getGm()
+    + RuleSet getRuleSet()
+    + Set<Character> getCharacters()
+    + Set<Session> getSessions()
+    + void setName(String name)
+    + void setDescription(String description)
+    + void setStatus(String status)
+    + boolean isActive()
+  }
+
+  class RuleSet <<Entity>> {
+    - Long rulesetId
+    - String name
+    - String description
+    - JsonNode fichaTemplate
+    - LocalDateTime createdAt
+    - LocalDateTime updatedAt
+    --
+    + Long getRulesetId()
+    + String getName()
+    + String getDescription()
+    + JsonNode getFichaTemplate()
+    + void setName(String name)
+    + void setDescription(String description)
+    + void setFichaTemplate(JsonNode template)
+  }
+
+  class Character <<Entity>> {
+    - Long characterId
+    - String name
+    - Boolean isNpc
+    - JsonNode fichaData
+    - LocalDateTime createdAt
+    - LocalDateTime updatedAt
+    --
+    + Long getCharacterId()
+    + String getName()
+    + Boolean getIsNpc()
+    + JsonNode getFichaData()
+    + User getOwner()
+    + Campaign getCampaign()
+    + Set<Campaign> getCampaigns()
+    + void setName(String name)
+    + void setIsNpc(Boolean isNpc)
+    + void setFichaData(JsonNode data)
+    + boolean isNPC()
+    + boolean isPC()
+  }
+
+  class Session <<Entity>> {
+    - Long sessionId
+    - LocalDate date
+    - String resumo
+    - String notas
+    - LocalDateTime createdAt
+    - LocalDateTime updatedAt
+    --
+    + Long getSessionId()
+    + LocalDate getDate()
+    + String getResumo()
+    + String getNotas()
+    + Campaign getCampaign()
+    + void setDate(LocalDate date)
+    + void setResumo(String resumo)
+    + void setNotas(String notas)
+  }
+
+  class CampaignCharacter <<Entity>> {
+    - Long id
+    - LocalDateTime joinedAt
+    --
+    + Long getId()
+    + Campaign getCampaign()
+    + Character getCharacter()
+    + LocalDateTime getJoinedAt()
+  }
+
+  ' Relacionamentos entre entidades
+  User "1" --> "*" Campaign : gm_user_id
+  User "1" --> "*" Character : owner_user_id
+
+  RuleSet "1" --> "*" Campaign : ruleset_id
+
+  Campaign "1" --> "*" Session : campaign_id
+  Campaign "*" --> "*" Character : campaign_character
+
+  Character "*" --> "*" Campaign : campaign_character
+  Character "1" --> "1" Campaign : campaign_id
+  Character "1" --> "1" User : owner_user_id
+
+  CampaignCharacter --> Campaign : campaign_id
+  CampaignCharacter --> Character : character_id
+}
+
+package "Repositórios (Data Access)" <<Repository>> {
+
+  interface UserRepository <<Repository>> {
+    + Optional<User> findById(Long id)
+    + Optional<User> findByEmail(String email)
+    + List<User> findAll()
+    + User save(User user)
+    + void deleteById(Long id)
+  }
+
+  interface CampaignRepository <<Repository>> {
+    + Optional<Campaign> findById(Long id)
+    + List<Campaign> findByGmUserId(Long gmUserId)
+    + List<Campaign> findByStatus(String status)
+    + Campaign save(Campaign campaign)
+    + void deleteById(Long id)
+  }
+
+  interface RuleSetRepository <<Repository>> {
+    + Optional<RuleSet> findById(Long id)
+    + List<RuleSet> findAll()
+    + RuleSet save(RuleSet ruleSet)
+    + void deleteById(Long id)
+  }
+
+  interface CharacterRepository <<Repository>> {
+    + Optional<Character> findById(Long id)
+    + List<Character> findByOwnerUserId(Long userId)
+    + List<Character> findByCampaignId(Long campaignId)
+    + List<Character> findByIsNpc(Boolean isNpc)
+    + Character save(Character character)
+    + void deleteById(Long id)
+  }
+
+  interface SessionRepository <<Repository>> {
+    + Optional<Session> findById(Long id)
+    + List<Session> findByCampaignId(Long campaignId)
+    + Session save(Session session)
+    + void deleteById(Long id)
+  }
+
+  interface CampaignCharacterRepository <<Repository>> {
+    + List<CampaignCharacter> findByCampaignId(Long campaignId)
+    + List<CampaignCharacter> findByCharacterId(Long characterId)
+    + CampaignCharacter save(CampaignCharacter cc)
+    + void deleteById(Long id)
+  }
+
+  ' Relacionamentos Repository -> Entity
+  UserRepository ..> User : uses
+  CampaignRepository ..> Campaign : uses
+  RuleSetRepository ..> RuleSet : uses
+  CharacterRepository ..> Character : uses
+  SessionRepository ..> Session : uses
+  CampaignCharacterRepository ..> CampaignCharacter : uses
+}
+
+package "Serviços (Business Logic)" <<Service>> {
+
+  class UserService <<Service>> {
+    - UserRepository userRepository
+    --
+    + Optional<User> findById(Long id)
+    + Optional<User> findByEmail(String email)
+    + User createUser(User user)
+    + User updateUser(Long id, User user)
+    + void deleteUser(Long id)
+    + boolean validateCredentials(String email, String password)
+  }
+
+  class CampaignService <<Service>> {
+    - CampaignRepository campaignRepository
+    - RuleSetRepository ruleSetRepository
+    - UserRepository userRepository
+    --
+    + Optional<Campaign> findById(Long id)
+    + List<Campaign> findByGm(Long gmId)
+    + Campaign createCampaign(Campaign campaign, Long gmId)
+    + Campaign updateCampaign(Long id, Campaign campaign)
+    + void deleteCampaign(Long id)
+    + boolean validateCampaign(Campaign campaign)
+  }
+
+  class RuleSetService <<Service>> {
+    - RuleSetRepository ruleSetRepository
+    --
+    + Optional<RuleSet> findById(Long id)
+    + List<RuleSet> findAll()
+    + RuleSet createRuleSet(RuleSet ruleSet)
+    + RuleSet updateRuleSet(Long id, RuleSet ruleSet)
+    + void deleteRuleSet(Long id)
+  }
+
+  class CharacterService <<Service>> {
+    - CharacterRepository characterRepository
+    - CampaignRepository campaignRepository
+    - UserRepository userRepository
+    --
+    + Optional<Character> findById(Long id)
+    + List<Character> findByOwner(Long userId)
+    + List<Character> findByCampaign(Long campaignId)
+    + Character createCharacter(Character character, Long ownerId)
+    + Character updateCharacter(Long id, Character character)
+    + void deleteCharacter(Long id)
+    + boolean validatePermissions(Long characterId, Long userId)
+  }
+
+  class SessionService <<Service>> {
+    - SessionRepository sessionRepository
+    - CampaignRepository campaignRepository
+    --
+    + Optional<Session> findById(Long id)
+    + List<Session> findByCampaign(Long campaignId)
+    + Session createSession(Session session, Long campaignId, Long gmId)
+    + Session updateSession(Long id, Session session)
+    + void deleteSession(Long id)
+    + boolean validateGmPermission(Long campaignId, Long gmId)
+  }
+
+  ' Relacionamentos Service -> Repository
+  UserService --> UserRepository : uses
+  CampaignService --> CampaignRepository : uses
+  CampaignService --> RuleSetRepository : uses
+  CampaignService --> UserRepository : uses
+  RuleSetService --> RuleSetRepository : uses
+  CharacterService --> CharacterRepository : uses
+  CharacterService --> CampaignRepository : uses
+  CharacterService --> UserRepository : uses
+  SessionService --> SessionRepository : uses
+  SessionService --> CampaignRepository : uses
+}
+
+package "Controladores (API REST)" <<Controller>> {
+
+  class AuthController <<Controller>> {
+    - UserService userService
+    --
+    + ResponseEntity<?> login(LoginRequest request)
+    + ResponseEntity<?> register(RegisterRequest request)
+    + ResponseEntity<?> logout()
+  }
+
+  class CampaignController <<Controller>> {
+    - CampaignService campaignService
+    --
+    + ResponseEntity<List<CampaignDTO>> getAllCampaigns()
+    + ResponseEntity<CampaignDTO> getCampaign(Long id)
+    + ResponseEntity<List<CampaignDTO>> getCampaignsByGm(Long gmId)
+    + ResponseEntity<CampaignDTO> createCampaign(CampaignDTO campaignDTO)
+    + ResponseEntity<CampaignDTO> updateCampaign(Long id, CampaignDTO campaignDTO)
+    + ResponseEntity<Void> deleteCampaign(Long id)
+  }
+
+  class RuleSetController <<Controller>> {
+    - RuleSetService ruleSetService
+    --
+    + ResponseEntity<List<RuleSetDTO>> getAllRuleSets()
+    + ResponseEntity<RuleSetDTO> getRuleSet(Long id)
+    + ResponseEntity<RuleSetDTO> createRuleSet(RuleSetDTO ruleSetDTO)
+    + ResponseEntity<RuleSetDTO> updateRuleSet(Long id, RuleSetDTO ruleSetDTO)
+    + ResponseEntity<Void> deleteRuleSet(Long id)
+  }
+
+  class CharacterController <<Controller>> {
+    - CharacterService characterService
+    --
+    + ResponseEntity<List<CharacterDTO>> getAllCharacters()
+    + ResponseEntity<CharacterDTO> getCharacter(Long id)
+    + ResponseEntity<List<CharacterDTO>> getCharactersByOwner(Long userId)
+    + ResponseEntity<List<CharacterDTO>> getCharactersByCampaign(Long campaignId)
+    + ResponseEntity<CharacterDTO> createCharacter(CharacterDTO characterDTO)
+    + ResponseEntity<CharacterDTO> updateCharacter(Long id, CharacterDTO characterDTO)
+    + ResponseEntity<Void> deleteCharacter(Long id)
+  }
+
+  class SessionController <<Controller>> {
+    - SessionService sessionService
+    --
+    + ResponseEntity<List<SessionDTO>> getAllSessions()
+    + ResponseEntity<SessionDTO> getSession(Long id)
+    + ResponseEntity<List<SessionDTO>> getSessionsByCampaign(Long campaignId)
+    + ResponseEntity<SessionDTO> createSession(SessionDTO sessionDTO)
+    + ResponseEntity<SessionDTO> updateSession(Long id, SessionDTO sessionDTO)
+    + ResponseEntity<Void> deleteSession(Long id)
+  }
+
+  ' Relacionamentos Controller -> Service
+  AuthController --> UserService : uses
+  CampaignController --> CampaignService : uses
+  RuleSetController --> RuleSetService : uses
+  CharacterController --> CharacterService : uses
+  SessionController --> SessionService : uses
+}
+
+package "DTOs (Data Transfer Objects)" <<DTO>> {
+
+  class LoginRequest <<DTO>> {
+    - String email
+    - String password
+    --
+    + String getEmail()
+    + String getPassword()
+    + void setEmail(String email)
+    + void setPassword(String password)
+  }
+
+  class RegisterRequest <<DTO>> {
+    - String name
+    - String email
+    - String password
+    - String role
+    --
+    + String getName()
+    + String getEmail()
+    + String getPassword()
+    + String getRole()
+    + void setName(String name)
+    + void setEmail(String email)
+    + void setPassword(String password)
+    + void setRole(String role)
+  }
+
+  class AuthResponse <<DTO>> {
+    - String token
+    - String type
+    - Long userId
+    - String name
+    - String role
+    --
+    + String getToken()
+    + String getType()
+    + Long getUserId()
+    + String getName()
+    + String getRole()
+  }
+
+  class CampaignDTO <<DTO>> {
+    - Long campaignId
+    - String name
+    - String description
+    - String status
+    - Long gmUserId
+    - String gmName
+    - Long rulesetId
+    - String rulesetName
+    - LocalDateTime lastSession
+    --
+    + Long getCampaignId()
+    + String getName()
+    + String getDescription()
+    + String getStatus()
+    + Long getGmUserId()
+    + Long getRulesetId()
+  }
+
+  class RuleSetDTO <<DTO>> {
+    - Long rulesetId
+    - String name
+    - String description
+    - JsonNode fichaTemplate
+    --
+    + Long getRulesetId()
+    + String getName()
+    + String getDescription()
+    + JsonNode getFichaTemplate()
+  }
+
+  class CharacterDTO <<DTO>> {
+    - Long characterId
+    - String name
+    - Boolean isNpc
+    - JsonNode fichaData
+    - Long ownerUserId
+    - String ownerName
+    - Long campaignId
+    - String campaignName
+    --
+    + Long getCharacterId()
+    + String getName()
+    + Boolean getIsNpc()
+    + JsonNode getFichaData()
+    + Long getOwnerUserId()
+    + Long getCampaignId()
+  }
+
+  class SessionDTO <<DTO>> {
+    - Long sessionId
+    - LocalDate date
+    - String resumo
+    - String notas
+    - Long campaignId
+    - String campaignName
+    - LocalDateTime createdAt
+    --
+    + Long getSessionId()
+    + LocalDate getDate()
+    + String getResumo()
+    + String getNotas()
+    + Long getCampaignId()
+  }
+
+  ' Relacionamentos DTO -> Entity (conversão)
+  CampaignDTO ..> Campaign : maps to
+  RuleSetDTO ..> RuleSet : maps to
+  CharacterDTO ..> Character : maps to
+  SessionDTO ..> Session : maps to
+  LoginRequest ..> User : used by
+  RegisterRequest ..> User : used by
+}
+
+package "Spring Security" <<Security>> {
+
+  class SecurityConfig <<Security>> {
+    - JwtAuthenticationFilter jwtAuthenticationFilter
+    - UserDetailsService userDetailsService
+    - PasswordEncoder passwordEncoder
+    --
+    + SecurityFilterChain filterChain(HttpSecurity http)
+    + PasswordEncoder passwordEncoder()
+    + AuthenticationManager authenticationManager()
+    + void configure(HttpSecurity http)
+  }
+
+  class JwtAuthenticationFilter <<Security>> {
+    - JwtTokenUtil jwtTokenUtil
+    - UserDetailsService userDetailsService
+    --
+    + void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+    + String extractToken(HttpServletRequest request)
+    + boolean validateToken(String token)
+    + UsernamePasswordAuthenticationToken getAuthentication(String token)
+  }
+
+  class JwtTokenUtil <<Security>> {
+    - String secret
+    - Long expiration
+    --
+    + String generateToken(UserDetails userDetails)
+    + String extractUsername(String token)
+    + Date extractExpiration(String token)
+    + boolean validateToken(String token, UserDetails userDetails)
+    + boolean isTokenExpired(String token)
+  }
+
+  class CustomUserDetailsService <<Security>> {
+    - UserRepository userRepository
+    --
+    + UserDetails loadUserByUsername(String email)
+    + UserDetails loadUserById(Long userId)
+  }
+
+  class JwtAuthenticationEntryPoint <<Security>> {
+    --
+    + void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
+  }
+
+  class JwtAccessDeniedHandler <<Security>> {
+    --
+    + void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
+  }
+
+  ' Relacionamentos Security
+  SecurityConfig --> JwtAuthenticationFilter : uses
+  SecurityConfig --> UserDetailsService : uses
+  SecurityConfig --> PasswordEncoder : uses
+  
+  JwtAuthenticationFilter --> JwtTokenUtil : uses
+  JwtAuthenticationFilter --> UserDetailsService : uses
+  
+  CustomUserDetailsService --> UserRepository : uses
+  
+  JwtAuthenticationFilter ..> SecurityConfig : configured by
+  CustomUserDetailsService ..|> UserDetailsService : implements
+}
+
+' Relacionamentos entre pacotes
+AuthController --> LoginRequest : uses
+AuthController --> RegisterRequest : uses
+AuthController --> AuthResponse : returns
+
+CampaignController --> CampaignDTO : uses
+RuleSetController --> RuleSetDTO : uses
+CharacterController --> CharacterDTO : uses
+SessionController --> SessionDTO : uses
+
+JwtAuthenticationFilter --> CustomUserDetailsService : uses
+SecurityConfig --> JwtAuthenticationFilter : configures
+CustomUserDetailsService --> UserRepository : uses
+
+@enduml
+

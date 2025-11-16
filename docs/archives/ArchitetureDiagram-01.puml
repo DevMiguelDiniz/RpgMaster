@@ -1,0 +1,72 @@
+@startuml Arquitetura do Sistema - 3 Camadas
+
+skinparam handwritten false
+skinparam style strict
+skinparam componentStyle rectangle
+skinparam linetype ortho
+
+title Arquitetura do Sistema de RPG - 3 Camadas
+
+' Definição de cores
+skinparam component {
+  BackgroundColor<<frontend>> #E1F5FE
+  BorderColor<<frontend>> #0277BD
+  BackgroundColor<<backend>> #FFF3E0
+  BorderColor<<backend>> #E65100
+  BackgroundColor<<database>> #F1F8E9
+  BorderColor<<database>> #558B2F
+}
+
+package "Sistema de RPG" {
+
+    package "Frontend" <<frontend>> {
+        [Páginas (Pages)] <<frontend>> as Pages
+        [Componentes (Components)] <<frontend>> as Components
+        [API Client] <<frontend>> as ApiClient
+        
+        Pages --> Components
+        Components --> ApiClient
+    }
+
+    package "Backend" <<backend>> {
+        
+        package "API REST (Controllers)" as Controllers {
+            [REST Controllers] <<backend>> as RESTCtrl
+        }
+        
+        package "Lógica de Negócio (Services)" as Services {
+            [Business Services] <<backend>> as BusinessSvc
+        }
+        
+        package "Acesso a Dados (Repositories)" as Repositories {
+            [Data Repositories] <<backend>> as DataRepo
+        }
+        
+        package "Models" {
+            [Modelos de Dados (Entities)] <<backend>> as Entities
+        }
+        
+        RESTCtrl --> BusinessSvc
+        BusinessSvc --> DataRepo
+        DataRepo --> Entities
+    }
+
+    package "Persistência" <<database>> {
+        database "PostgreSQL DB" as PostgresDB {
+            [Schemas (Tabelas)] <<database>> as Tables
+            [Dados de Ficha (JSON/JSONB)] <<database>> as JsonData
+            
+            Tables --> JsonData
+        }
+    }
+}
+
+' Relacionamentos entre camadas
+ApiClient -down-> RESTCtrl : "Requisições HTTP\n(JSON)"
+DataRepo -down-> PostgresDB : "JPA/Hibernate\nJDBC"
+
+' Relacionamento de Entidades
+DataRepo ..> Entities : Mapeamento JPA
+
+
+@enduml

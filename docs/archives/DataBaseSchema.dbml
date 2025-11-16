@@ -1,0 +1,253 @@
+Project rpgmaster {
+  database_type: 'PostgreSQL'
+  Note: '''
+    Sistema de Gerenciamento de Campanhas de RPG
+    
+    Estratégias de Mapeamento:
+    1. JPA/Hibernate para mapeamento objeto-relacional
+    2. JSONB para armazenamento de dados dinâmicos (fichas)
+    3. Índices otimizados para consultas frequentes
+    4. Constraints para integridade referencial
+    5. Timestamps automáticos para auditoria
+  '''
+}
+
+Table users {
+  user_id bigserial [pk, increment, note: 'Chave primária auto-incrementada']
+  name varchar(255) [not null, note: 'Nome completo do usuário']
+  email varchar(255) [not null, unique, note: 'Email único para login']
+  password varchar(255) [not null, note: 'Senha criptografada (BCrypt)']
+  role varchar(50) [not null, default: 'PLAYER', note: 'Papel: GM ou PLAYER']
+  created_at timestamp [not null, default: `now()`, note: 'Data de criação']
+  updated_at timestamp [not null, default: `now()`, note: 'Data de atualização']
+  
+  indexes {
+    (email) [unique, name: 'idx_users_email']
+    (role) [name: 'idx_users_role']
+  }
+  
+  Note: '''
+    Estratégia de Mapeamento:
+    - @Entity com @Table(name = "users")
+    - @Id em user_id com @GeneratedValue(strategy = GenerationType.IDENTITY)
+    - @Column para mapeamento de campos
+    - @CreationTimestamp e @UpdateTimestamp para timestamps
+    - Enum para role (GM, PLAYER)
+    
+    Índices:
+    - Índice único em email para busca rápida de login
+    - Índice em role para filtros por papel
+  '''
+}
+
+Table rulesets {
+  ruleset_id bigserial [pk, increment, note: 'Chave primária auto-incrementada']
+  name varchar(255) [not null, note: 'Nome do sistema de regras (ex: D&D 5e)']
+  description text [note: 'Descrição do sistema de regras']
+  ficha_template jsonb [not null, note: 'Template JSON da ficha de personagem']
+  created_at timestamp [not null, default: `now()`, note: 'Data de criação']
+  updated_at timestamp [not null, default: `now()`, note: 'Data de atualização']
+  
+  indexes {
+    (name) [name: 'idx_rulesets_name']
+  }
+  
+  Note: '''
+    Estratégia de Mapeamento:
+    - @Entity com @Table(name = "rulesets")
+    - @Type(type = "jsonb") ou @JdbcTypeCode(SqlTypes.JSON) para ficha_template
+    - Jackson ObjectMapper para serialização/deserialização JSON
+    - Validação de schema JSON opcional
+    
+    Estrutura JSONB ficha_template:
+    {
+      "sections": [
+        {
+          "name": "Atributos",
+          "fields": [
+            {"name": "forca", "type": "number", "min": 0, "max": 20}
+          ]
+        }
+      ]
+    }
+  '''
+}
+
+
+Table campaigns {
+  campaign_id bigserial [pk, increment, note: 'Chave primária auto-incrementada']
+  name varchar(255) [not null, note: 'Nome da campanha']
+  description text [note: 'Descrição da campanha']
+  status varchar(50) [not null, default: 'ATIVA', note: 'Status: ATIVA, PAUSADA, FINALIZADA']
+  gm_user_id bigint [not null, ref: > users.user_id, note: 'ID do Game Master']
+  ruleset_id bigint [not null, ref: > rulesets.ruleset_id, note: 'Sistema de regras usado']
+  last_session timestamp [note: 'Data da última sessão registrada']
+  created_at timestamp [not null, default: `now()`, note: 'Data de criação']
+  updated_at timestamp [not null, default: `now()`, note: 'Data de atualização']
+  
+  indexes {
+    (gm_user_id) [name: 'idx_campaigns_gm']
+    (ruleset_id) [name: 'idx_campaigns_ruleset']
+    (status) [name: 'idx_campaigns_status']
+    (gm_user_id, status) [name: 'idx_campaigns_gm_status', note: 'Índice composto para consultas frequentes']
+  }
+  
+  Note: '''
+    Estratégia de Mapeamento:
+    - @Entity com @Table(name = "campaigns")
+    - @ManyToOne(fetch = FetchType.LAZY) para gm_user_id
+    - @ManyToOne(fetch = FetchType.LAZY) para ruleset_id
+    - @JoinColumn para especificar nome da FK
+    - Enum para status (ATIVA, PAUSADA, FINALIZADA)
+    
+    Relacionamentos:
+    - Uma campanha pertence a um GM (User)
+    - Uma campanha usa um sistema de regras (RuleSet)
+    - Uma campanha pode ter múltiplas sessões
+    - Uma campanha pode ter múltiplos personagens (via campaign_character)
+  '''
+}
+
+Table characters {
+  character_id bigserial [pk, increment, note: 'Chave primária auto-incrementada']
+  name varchar(255) [not null, note: 'Nome do personagem']
+  is_npc boolean [not null, default: false, note: 'true = NPC, false = PC']
+  ficha_data jsonb [not null, note: 'Dados da ficha em JSON (dinâmico conforme ruleset)']
+  owner_user_id bigint [not null, ref: > users.user_id, note: 'ID do dono do personagem']
+  campaign_id bigint [ref: > campaigns.campaign_id, note: 'Campanha principal do personagem']
+  created_at timestamp [not null, default: `now()`, note: 'Data de criação']
+  updated_at timestamp [not null, default: `now()`, note: 'Data de atualização']
+  
+  indexes {
+    (owner_user_id) [name: 'idx_characters_owner']
+    (campaign_id) [name: 'idx_characters_campaign']
+    (is_npc) [name: 'idx_characters_npc']
+    (owner_user_id, is_npc) [name: 'idx_characters_owner_npc', note: 'Índice composto para listar PCs de um usuário']
+  }
+  
+  Note: '''
+    Estratégia de Mapeamento:
+    - @Entity com @Table(name = "characters")
+    - @Type(type = "jsonb") para ficha_data
+    - @ManyToOne(fetch = FetchType.LAZY) para owner_user_id
+    - @ManyToOne(fetch = FetchType.LAZY) para campaign_id
+    - @ManyToMany para relacionamento com campaigns via campaign_character
+    
+    Estrutura JSONB ficha_data:
+    - Dinâmica conforme o ficha_template do ruleset
+    - Exemplo D&D 5e:
+    {
+      "atributos": {
+        "forca": 16,
+        "destreza": 14
+      },
+      "nivel": 5,
+      "classe": "Guerreiro"
+    }
+    
+    Relacionamentos:
+    - Um personagem pertence a um owner (User)
+    - Um personagem pode ter uma campanha principal
+    - Um personagem pode participar de múltiplas campanhas (via campaign_character)
+    
+    Nota: Índice GIN para ficha_data deve ser criado manualmente no PostgreSQL:
+    CREATE INDEX idx_characters_ficha_gin ON characters USING gin (ficha_data);
+  '''
+}
+
+Table sessions {
+  session_id bigserial [pk, increment, note: 'Chave primária auto-incrementada']
+  campaign_id bigint [not null, ref: > campaigns.campaign_id, note: 'Campanha da sessão']
+  date date [not null, note: 'Data da sessão']
+  resumo text [note: 'Resumo do que aconteceu na sessão']
+  notas text [note: 'Notas adicionais do GM']
+  created_at timestamp [not null, default: `now()`, note: 'Data de criação']
+  updated_at timestamp [not null, default: `now()`, note: 'Data de atualização']
+  
+  indexes {
+    (campaign_id) [name: 'idx_sessions_campaign']
+    (date) [name: 'idx_sessions_date']
+    (campaign_id, date) [name: 'idx_sessions_campaign_date', note: 'Índice composto para ordenação por data']
+  }
+  
+  Note: '''
+    Estratégia de Mapeamento:
+    - @Entity com @Table(name = "sessions")
+    - @ManyToOne(fetch = FetchType.LAZY) para campaign_id
+    - @JoinColumn para especificar nome da FK
+    - @Temporal(TemporalType.DATE) para date
+    
+    Relacionamentos:
+    - Uma sessão pertence a uma campanha
+    - Múltiplas sessões podem pertencer à mesma campanha
+  '''
+}
+
+
+Table campaign_character {
+  id bigserial [pk, increment, note: 'Chave primária auto-incrementada']
+  campaign_id bigint [not null, ref: > campaigns.campaign_id, note: 'ID da campanha']
+  character_id bigint [not null, ref: > characters.character_id, note: 'ID do personagem']
+  joined_at timestamp [not null, default: `now()`, note: 'Data em que o personagem entrou na campanha']
+  
+  indexes {
+    (campaign_id, character_id) [unique, name: 'idx_campaign_character_unique', note: 'Constraint única para evitar duplicatas']
+    (campaign_id) [name: 'idx_campaign_character_campaign']
+    (character_id) [name: 'idx_campaign_character_character']
+  }
+  
+  Note: '''
+    Estratégia de Mapeamento:
+    - @Entity com @Table(name = "campaign_character")
+    - @ManyToOne para campaign_id e character_id
+    - @JoinTable não necessário (tabela explícita)
+    - Constraint UNIQUE em (campaign_id, character_id) para evitar duplicatas
+    
+    Relacionamentos:
+    - Tabela de junção para relacionamento N:N entre Campaign e Character
+    - Um personagem pode participar de múltiplas campanhas
+    - Uma campanha pode ter múltiplos personagens
+  '''
+}
+
+// ============================================================================
+// ESTRATÉGIAS DE MAPEAMENTO
+// ============================================================================
+// 
+// 1. MAPEAMENTO OBJETO-RELACIONAL (ORM)
+//    - Uso de JPA/Hibernate para abstrair SQL
+//    - Annotations: @Entity, @Table, @Id, @Column, @ManyToOne, @ManyToMany
+//    - FetchType.LAZY para otimização de queries
+//    - CascadeType para operações em cascata
+//
+// 2. ARMAZENAMENTO DE DADOS DINÂMICOS (JSONB)
+//    - Uso de JSONB para fichas de personagem (ficha_data)
+//    - Uso de JSONB para templates de ficha (ficha_template)
+//    - Índices GIN para consultas eficientes em JSONB (criados manualmente)
+//    - Validação de schema JSON no nível da aplicação
+//
+// 3. RELACIONAMENTOS
+//    - One-to-Many: User -> Campaigns, User -> Characters
+//    - Many-to-One: Campaign -> User (GM), Campaign -> RuleSet
+//    - Many-to-Many: Campaign <-> Character (via campaign_character)
+//    - One-to-Many: Campaign -> Sessions
+//
+// 4. ÍNDICES E PERFORMANCE
+//    - Índices em chaves estrangeiras para JOINs rápidos
+//    - Índices compostos para consultas frequentes
+//    - Índices GIN para busca em campos JSONB (criados via SQL manual)
+//    - Índices únicos para constraints de integridade
+//
+// 5. INTEGRIDADE REFERENCIAL
+//    - Foreign Keys com ON DELETE CASCADE/RESTRICT conforme regra de negócio
+//    - Constraints UNIQUE para evitar duplicatas
+//    - NOT NULL para campos obrigatórios
+//    - Default values para campos opcionais
+//
+// 6. AUDITORIA
+//    - Campos created_at e updated_at em todas as tabelas
+//    - Preenchimento automático via @CreationTimestamp e @UpdateTimestamp
+//    - Útil para rastreamento e debugging
+//
+// ============================================================================
+ 

@@ -1,0 +1,29 @@
+@startuml Diagrama de Estados - Ciclo de Vida da Campanha
+
+skinparam state {
+  BackgroundColor #E1F5FE
+  BorderColor #0277BD
+  ArrowColor #0277BD
+  BackgroundColor<<initial>> #4CAF50
+  BackgroundColor<<final>> #F44336
+  BackgroundColor<<choice>> #FFC107
+}
+
+title Diagrama de Estados - Ciclo de Vida da Campanha
+
+state "Criada" as CampaignCreated
+state "Ativa" as CampaignActive
+state "Pausada" as CampaignPaused
+state "Finalizada" as CampaignFinalized
+
+[*] --> CampaignCreated : GM cria campanha
+
+CampaignCreated --> CampaignActive : GM ativa campanha\n/ adiciona personagens
+CampaignActive --> CampaignPaused : GM pausa campanha
+CampaignPaused --> CampaignActive : GM retoma campanha
+CampaignActive --> CampaignFinalized : GM finaliza campanha
+CampaignPaused --> CampaignFinalized : GM finaliza campanha
+CampaignFinalized --> [*]
+
+@enduml
+

@@ -1,0 +1,96 @@
+@startuml Diagrama de Estados - Sistema de Gerenciamento de Campanhas de RPG
+
+skinparam state {
+  BackgroundColor #E1F5FE
+  BorderColor #0277BD
+  ArrowColor #0277BD
+  BackgroundColor<<initial>> #4CAF50
+  BackgroundColor<<final>> #F44336
+  BackgroundColor<<choice>> #FFC107
+}
+
+title Diagrama de Estados - Sistema de Gerenciamento de Campanhas de RPG
+
+state "Ciclo de Vida da Campanha" as CampaignLifecycle {
+  
+  [*] --> Criada : GM cria campanha
+  
+  state "Criada" as CampaignCreated
+  state "Ativa" as CampaignActive
+  state "Pausada" as CampaignPaused
+  state "Finalizada" as CampaignFinalized
+  
+  CampaignCreated --> CampaignActive : GM ativa campanha\n/ adiciona personagens
+  CampaignActive --> CampaignPaused : GM pausa campanha
+  CampaignPaused --> CampaignActive : GM retoma campanha
+  CampaignActive --> CampaignFinalized : GM finaliza campanha
+  CampaignPaused --> CampaignFinalized : GM finaliza campanha
+  CampaignFinalized --> [*]
+}
+
+
+state "Ciclo de Vida do Personagem" as CharacterLifecycle {
+  
+  [*] --> EmCriacao : Usuário inicia criação
+  
+  state "Em Criação" as CharacterCreating
+  state "Ativo" as CharacterActive
+  state "Em Campanha" as CharacterInCampaign
+  state "Removido" as CharacterRemoved
+  
+  CharacterCreating --> CharacterActive : Usuário salva personagem
+  CharacterCreating --> [*] : Usuário cancela criação
+  CharacterActive --> CharacterInCampaign : Adicionado à campanha
+  CharacterInCampaign --> CharacterActive : Removido da campanha
+  CharacterActive --> CharacterRemoved : Usuário/GM deleta
+  CharacterInCampaign --> CharacterRemoved : Usuário/GM deleta
+  CharacterRemoved --> [*]
+}
+
+state "Ciclo de Vida da Sessão" as SessionLifecycle {
+  
+  [*] --> Registrada : GM registra sessão
+  
+  state "Registrada" as SessionRegistered
+  state "Editada" as SessionEdited
+  
+  SessionRegistered --> SessionEdited : GM edita sessão
+  SessionEdited --> SessionRegistered : GM salva alterações
+  SessionRegistered --> [*] : Sessão finalizada
+  SessionEdited --> [*] : Sessão finalizada
+}
+
+state "Estados de Autenticação" as AuthStates {
+  
+  [*] --> NaoAutenticado : Usuário acessa sistema
+  
+  state "Não Autenticado" as NotAuthenticated
+  state "Autenticado" as Authenticated
+  state "Como GM" as AsGM
+  state "Como Player" as AsPlayer
+  
+  NotAuthenticated --> Authenticated : Login bem-sucedido
+  Authenticated --> AsGM : Role = GM
+  Authenticated --> AsPlayer : Role = Player
+  AsGM --> Authenticated : Logout
+  AsPlayer --> Authenticated : Logout
+  Authenticated --> NotAuthenticated : Logout / Token expirado
+  NotAuthenticated --> [*] : Sair do sistema
+}
+
+state "Estados do Sistema" as SystemStates {
+  
+  state "Inicialização" as SystemInitializing
+  state "Operacional" as SystemOperational
+  state "Manutenção" as SystemMaintenance
+  
+  [*] --> SystemInitializing
+  SystemInitializing --> SystemOperational : Inicialização completa
+  SystemOperational --> SystemMaintenance : Administrador inicia manutenção
+  SystemMaintenance --> SystemOperational : Manutenção concluída
+  SystemOperational --> [*] : Sistema encerrado
+}
+
+
+@enduml
+

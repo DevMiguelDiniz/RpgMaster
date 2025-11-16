@@ -1,0 +1,42 @@
+@startuml UC01 - Criar Campanha - Diagrama de Comunicação
+
+title Diagrama de Comunicação - UC-01: Criar Campanha
+
+' Definição dos Participantes
+actor "Mestre (GM)" as GM
+participant "Interface Web" as UI
+participant "CampaignController" as Controller
+participant "CampaignService" as Service
+participant "RuleSetRepository" as RepoRules
+participant "CampaignRepository" as Repo
+database "Banco de Dados" as DB
+
+' Configuração para numerar as mensagens automaticamente
+autonumber 1
+
+== Fluxo: Solicitar Formulário de Criação ==
+
+GM -> UI: acessarFormulario()
+UI -> Controller: solicitarFormularioCriacao()
+Controller -> RepoRules: listarSistemasRegras()
+RepoRules -> DB: SELECT * FROM RuleSet
+DB --> RepoRules: lista de sistemas
+RepoRules --> Controller: sistemas disponíveis
+Controller --> UI: formulário + sistemas
+UI --> GM: exibirFormulario(listaSistemas)
+
+== Fluxo: Criar Campanha ==
+
+GM -> UI: criarCampanha(nome, descrição, ruleset_id)
+UI -> Controller: criarCampanha(dados)
+Controller -> Service: validarECriarCampanha(dados, gm_id)
+Service -> Service: validarDados()
+Service -> Repo: salvarCampanha(campanha)
+Repo -> DB: INSERT INTO Campaign
+DB --> Repo: campaign_id
+Repo --> Service: campanha criada
+Service --> Controller: sucesso
+Controller --> UI: confirmação
+UI --> GM: campanhaCriada(campaign_id)
+
+@enduml

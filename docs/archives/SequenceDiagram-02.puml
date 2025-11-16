@@ -1,0 +1,104 @@
+@startuml UC02 - Criar Personagem (Player)
+
+title Diagrama de Sequência - UC-02: Criar Personagem (Player)
+
+actor "Jogador\n(Player)" as Player
+participant "Interface\nWeb" as UI
+participant "Controller\nPersonagem" as Controller
+participant "Service\nPersonagem" as Service
+participant "Repository\nCampanha" as RepoCamp
+participant "Repository\nRuleSet" as RepoRules
+participant "Repository\nPersonagem" as RepoChar
+database "Banco de\nDados" as DB
+
+autonumber
+
+Player -> UI: Acessa criação de personagem
+activate UI
+
+UI -> Controller: solicitarCampanhasDisponiveis(player_id)
+activate Controller
+
+Controller -> RepoCamp: buscarCampanhasDoJogador(player_id)
+activate RepoCamp
+
+RepoCamp -> DB: SELECT * FROM Campaign\nWHERE campaign_id IN\n(SELECT campaign_id FROM CampaignCharacter)
+activate DB
+DB --> RepoCamp: lista de campanhas
+deactivate DB
+
+RepoCamp --> Controller: campanhas disponíveis
+deactivate RepoCamp
+
+Controller --> UI: lista de campanhas
+deactivate Controller
+
+UI --> Player: Exibe campanhas
+deactivate UI
+
+Player -> UI: Seleciona campanha e\npreenche dados básicos
+activate UI
+
+UI -> Controller: obterTemplateFicha(campaign_id)
+activate Controller
+
+Controller -> RepoCamp: buscarCampanha(campaign_id)
+activate RepoCamp
+
+RepoCamp -> DB: SELECT * FROM Campaign WHERE id = ?
+activate DB
+DB --> RepoCamp: campanha com ruleset_id
+deactivate DB
+
+RepoCamp --> Controller: dados da campanha
+deactivate RepoCamp
+
+Controller -> RepoRules: buscarTemplate(ruleset_id)
+activate RepoRules
+
+RepoRules -> DB: SELECT ficha_template\nFROM RuleSet WHERE id = ?
+activate DB
+DB --> RepoRules: template JSON
+deactivate DB
+
+RepoRules --> Controller: template da ficha
+deactivate RepoRules
+
+Controller --> UI: formulário dinâmico
+deactivate Controller
+
+UI --> Player: Exibe ficha para preenchimento
+deactivate UI
+
+Player -> UI: Preenche dados da ficha
+activate UI
+
+UI -> Controller: criarPersonagem(dados_pc, ficha_data)
+activate Controller
+
+Controller -> Service: validarECriarPC(dados, player_id)
+activate Service
+
+Service -> Service: validarPermissões()
+
+Service -> RepoChar: salvarPersonagem(personagem)
+activate RepoChar
+
+RepoChar -> DB: INSERT INTO Character\n(name, is_npc, owner_user_id,\ncampaign_id, ficha_data)
+activate DB
+DB --> RepoChar: character_id
+deactivate DB
+
+RepoChar --> Service: personagem criado
+deactivate RepoChar
+
+Service --> Controller: sucesso
+deactivate Service
+
+Controller --> UI: confirmação
+deactivate Controller
+
+UI --> Player: PC criado com sucesso
+deactivate UI
+
+@enduml

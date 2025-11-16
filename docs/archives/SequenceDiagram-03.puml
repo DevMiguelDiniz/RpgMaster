@@ -1,0 +1,82 @@
+@startuml UC03 - Editar Ficha de Personagem
+
+title Diagrama de Sequência - UC-03: Editar Ficha de Personagem
+
+actor "Usuário\n(GM/Player)" as User
+participant "Interface\nWeb" as UI
+participant "Controller\nPersonagem" as Controller
+participant "Service\nPersonagem" as Service
+participant "Repository\nPersonagem" as RepoChar
+database "Banco de\nDados" as DB
+
+autonumber
+
+User -> UI: Seleciona personagem para editar
+activate UI
+
+UI -> Controller: buscarFichaPersonagem(character_id, user_id)
+activate Controller
+
+Controller -> Service: validarPermissaoAcesso(character_id, user_id)
+activate Service
+
+Service -> RepoChar: buscarPersonagem(character_id)
+activate RepoChar
+
+RepoChar -> DB: SELECT * FROM Character\nWHERE character_id = ?
+activate DB
+DB --> RepoChar: dados do personagem
+deactivate DB
+
+RepoChar --> Service: personagem
+deactivate RepoChar
+
+Service -> Service: verificarPermissao()\n(owner ou GM)
+
+alt Permissão negada
+    Service --> Controller: erro de permissão
+    Controller --> UI: acesso negado
+    UI --> User: Mensagem de erro
+else Permissão concedida
+    Service --> Controller: personagem autorizado
+    deactivate Service
+    
+    Controller --> UI: dados da ficha
+    deactivate Controller
+    
+    UI --> User: Exibe ficha editável
+    deactivate UI
+    
+    User -> UI: Modifica campos da ficha
+    activate UI
+    
+    UI -> Controller: atualizarFicha(character_id, ficha_data)
+    activate Controller
+    
+    Controller -> Service: validarEAtualizarFicha(dados)
+    activate Service
+    
+    Service -> Service: validarDados()
+    
+    Service -> RepoChar: atualizarPersonagem(character_id, dados)
+    activate RepoChar
+    
+    RepoChar -> DB: UPDATE Character\nSET ficha_data = ?\nWHERE character_id = ?
+    activate DB
+    DB --> RepoChar: confirmação
+    deactivate DB
+    
+    RepoChar --> Service: atualizado
+    deactivate RepoChar
+    
+    Service --> Controller: sucesso
+    deactivate Service
+    
+    Controller --> UI: confirmação
+    deactivate Controller
+    
+    UI --> User: Ficha atualizada com sucesso
+    deactivate UI
+end
+
+@enduml

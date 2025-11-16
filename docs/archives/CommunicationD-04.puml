@@ -1,0 +1,57 @@
+@startuml UC05 - Registrar Sessão - Diagrama de Comunicação
+
+title Diagrama de Comunicação - UC-05: Registrar Sessão
+
+' Definição dos Participantes
+actor "Mestre (GM)" as GM
+participant "Interface Web" as UI
+participant "SessionController" as Controller
+participant "SessionService" as Service
+participant "CampaignRepository" as RepoCamp
+participant "SessionRepository" as RepoSessao
+database "Banco de Dados" as DB
+
+' Configuração para numerar as mensagens automaticamente
+autonumber 1
+
+== Fluxo: Listar Campanhas do GM ==
+
+GM -> UI: acessarRegistro()
+UI -> Controller: listarCampanhasGM(gm_id)
+Controller -> RepoCamp: buscarCampanhasPorGM(gm_id)
+RepoCamp -> DB: SELECT * FROM Campaign WHERE gm_user_id = ? AND status = 'Ativa'
+DB --> RepoCamp: campanhas ativas
+RepoCamp --> Controller: lista de campanhas
+Controller --> UI: campanhas do GM
+UI --> GM: exibirCampanhas(listaCampanhas)
+
+== Fluxo: Registrar Sessão ==
+
+GM -> UI: registrarSessao(campaign_id, dados_sessao)
+UI -> Controller: registrarSessao(campaign_id, dados_sessao)
+Controller -> Service: validarERegistrarSessao(dados, gm_id)
+Service -> RepoCamp: verificarPermissaoGM(campaign_id, gm_id)
+RepoCamp -> DB: SELECT gm_user_id FROM Campaign WHERE campaign_id = ?
+DB --> RepoCamp: gm_user_id
+RepoCamp --> Service: permissão verificada
+
+alt GM é dono da campanha
+    Service -> Service: validarDados()
+    Service -> RepoSessao: salvarSessao(sessao)
+    RepoSessao -> DB: INSERT INTO Session
+    DB --> RepoSessao: session_id
+    RepoSessao --> Service: sessão registrada
+    Service -> RepoCamp: atualizarUltimaSessao(campaign_id)
+    RepoCamp -> DB: UPDATE Campaign SET last_session = NOW()
+    DB --> RepoCamp: confirmação
+    RepoCamp --> Service: atualizado
+    Service --> Controller: sucesso
+    Controller --> UI: confirmação
+    UI --> GM: sessaoRegistrada(session_id)
+else GM não é dono da campanha
+    Service --> Controller: erro de permissão
+    Controller --> UI: acesso negado
+    UI --> GM: mensagemErro("Sem permissão")
+end
+
+@enduml

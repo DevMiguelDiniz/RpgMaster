@@ -1,0 +1,30 @@
+@startuml Diagrama de Estados - Ciclo de Vida do Personagem
+
+skinparam state {
+  BackgroundColor #E1F5FE
+  BorderColor #0277BD
+  ArrowColor #0277BD
+  BackgroundColor<<initial>> #4CAF50
+  BackgroundColor<<final>> #F44336
+  BackgroundColor<<choice>> #FFC107
+}
+
+title Diagrama de Estados - Ciclo de Vida do Personagem
+
+state "Em Criação" as CharacterCreating
+state "Ativo" as CharacterActive
+state "Em Campanha" as CharacterInCampaign
+state "Removido" as CharacterRemoved
+
+[*] --> CharacterCreating : Usuário inicia criação
+
+CharacterCreating --> CharacterActive : Usuário salva personagem
+CharacterCreating --> [*] : Usuário cancela criação
+CharacterActive --> CharacterInCampaign : Adicionado à campanha
+CharacterInCampaign --> CharacterActive : Removido da campanha
+CharacterActive --> CharacterRemoved : Usuário/GM deleta
+CharacterInCampaign --> CharacterRemoved : Usuário/GM deleta
+CharacterRemoved --> [*]
+
+@enduml
+

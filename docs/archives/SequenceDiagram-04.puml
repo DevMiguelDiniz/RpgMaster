@@ -1,0 +1,97 @@
+@startuml UC05 - Registrar Sessão
+
+title Diagrama de Sequência - UC-05: Registrar Sessão
+
+actor "Mestre (GM)" as GM
+participant "Interface\nWeb" as UI
+participant "Controller\nSessão" as Controller
+participant "Service\nSessão" as Service
+participant "Repository\nCampanha" as RepoCamp
+participant "Repository\nSessão" as RepoSessao
+database "Banco de\nDados" as DB
+
+autonumber
+
+GM -> UI: Acessa registro de sessão
+activate UI
+
+UI -> Controller: listarCampanhasGM(gm_id)
+activate Controller
+
+Controller -> RepoCamp: buscarCampanhasPorGM(gm_id)
+activate RepoCamp
+
+RepoCamp -> DB: SELECT * FROM Campaign\nWHERE gm_user_id = ?\nAND status = 'Ativa'
+activate DB
+DB --> RepoCamp: campanhas ativas
+deactivate DB
+
+RepoCamp --> Controller: lista de campanhas
+deactivate RepoCamp
+
+Controller --> UI: campanhas do GM
+deactivate Controller
+
+UI --> GM: Exibe campanhas ativas
+deactivate UI
+
+GM -> UI: Seleciona campanha e\npreenche dados da sessão\n(data, resumo, notas)
+activate UI
+
+UI -> Controller: registrarSessao(campaign_id, dados_sessao)
+activate Controller
+
+Controller -> Service: validarERegistrarSessao(dados, gm_id)
+activate Service
+
+Service -> RepoCamp: verificarPermissaoGM(campaign_id, gm_id)
+activate RepoCamp
+
+RepoCamp -> DB: SELECT gm_user_id\nFROM Campaign\nWHERE campaign_id = ?
+activate DB
+DB --> RepoCamp: gm_user_id
+deactivate DB
+
+RepoCamp --> Service: permissão verificada
+deactivate RepoCamp
+
+alt GM não é dono da campanha
+    Service --> Controller: erro de permissão
+    Controller --> UI: acesso negado
+    UI --> GM: Mensagem de erro
+else GM é dono da campanha
+    Service -> Service: validarDados()
+    
+    Service -> RepoSessao: salvarSessao(sessao)
+    activate RepoSessao
+    
+    RepoSessao -> DB: INSERT INTO Session\n(campaign_id, data, resumo,\nnotas, created_at)
+    activate DB
+    DB --> RepoSessao: session_id
+    deactivate DB
+    
+    RepoSessao --> Service: sessão registrada
+    deactivate RepoSessao
+    
+    Service -> RepoCamp: atualizarUltimaSessao(campaign_id)
+    activate RepoCamp
+    
+    RepoCamp -> DB: UPDATE Campaign\nSET last_session = NOW()
+    activate DB
+    DB --> RepoCamp: confirmação
+    deactivate DB
+    
+    RepoCamp --> Service: atualizado
+    deactivate RepoCamp
+    
+    Service --> Controller: sucesso
+    deactivate Service
+    
+    Controller --> UI: confirmação
+    deactivate Controller
+    
+    UI --> GM: Sessão registrada com sucesso
+    deactivate UI
+end
+
+@enduml

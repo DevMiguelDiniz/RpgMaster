@@ -1,0 +1,107 @@
+@startuml Diagrama de Classes Simplificado - Sistema RPG
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+title Diagrama de Classes - Modelo de Domínio\n RPG Master
+
+' Definição de cores
+skinparam class {
+  BackgroundColor #E1F5FE
+  BorderColor #0277BD
+  ArrowColor #0277BD
+}
+
+class User {
+  - userId: Long <<PK>>
+  - username: String
+  - email: String
+  - passwordHash: String
+  - role: Enum {GM, Player}
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  __
+  + isGM(): Boolean
+  + isPlayer(): Boolean
+}
+
+class RuleSet {
+  - rulesetId: Long <<PK>>
+  - name: String
+  - description: Text
+  - fichaTemplate: JSON
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  __
+  + getFichaTemplate(): JSON
+  + setFichaTemplate(template: JSON): void
+}
+
+class Campaign {
+  - campaignId: Long <<PK>>
+  - name: String
+  - description: Text
+  - status: Enum {Ativa, Pausada, Concluída}
+  - lastSession: DateTime
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  __
+  + isActive(): Boolean
+  + addCharacter(character: Character): void
+  + removeCharacter(character: Character): void
+}
+
+class Character {
+  - characterId: Long <<PK>>
+  - name: String
+  - isNpc: Boolean
+  - fichaData: JSON
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  __
+  + isNPC(): Boolean
+  + isPC(): Boolean
+  + updateFicha(data: JSON): void
+}
+
+class Session {
+  - sessionId: Long <<PK>>
+  - date: Date
+  - resumo: String
+  - notas: Text
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  __
+  + getDate(): Date
+  + setResumo(resumo: String): void
+}
+
+class CampaignCharacter {
+  - id: Long <<PK>>
+  - joinedAt: DateTime
+}
+
+' Relacionamentos com multiplicidades e descrições
+
+User "1" -- "0..*" Campaign : "    gm_user_id    >\n    < é mestre de"
+
+
+User "0..1" -- "0..*" Character : "    owner_user_id    >\n    < possui (PCs)"
+
+
+RuleSet "1" -- "0..*" Campaign : "    ruleset_id    >\n    < usa sistema"
+
+
+Campaign "1" -- "0..*" Session : "    campaign_id    >\n    < possui sessões"
+
+
+Campaign "1" -- "0..*" Character : "    campaign_id    >\n    < contém NPCs"
+
+
+Campaign "0..*" -- "0..*" Character : "    campaign_character    "
+
+
+(Campaign, Character) .. CampaignCharacter
+
+
+@enduml
